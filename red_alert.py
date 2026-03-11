@@ -1107,6 +1107,11 @@ class HistoryWindow(QWidget):
             self._list.addWidget(empty)
             return
 
+        # חישוב רוחב עמודת זמן פעם אחת לפי DPI אמיתי
+        from PyQt5.QtGui import QFontMetrics as _FM
+        _time_font = QFont("Consolas", 9)
+        _time_col_w = _FM(_time_font).horizontalAdvance("23:59:59") + 16
+
         current_date = None
         for rec in records:
             ts_str = rec["_ts"]
@@ -1145,11 +1150,11 @@ class HistoryWindow(QWidget):
             row.setLayoutDirection(Qt.LeftToRight)
             rl = QHBoxLayout(row); rl.setContentsMargins(10, 8, 12, 8); rl.setSpacing(10)
 
-            # עמודת זמן — שמאל, רוחב קבוע מספיק ל-"23:59:59" כולל DPI גבוה
-            tl = QLabel(time_label); tl.setFont(QFont("Consolas", 9))
+            # עמודת זמן — רוחב שחושב לפי DPI אמיתי (מחוץ ללולאה)
+            tl = QLabel(time_label); tl.setFont(_time_font)
             tl.setStyleSheet("color:rgba(255,220,100,.65);")
             tl.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-            tl.setFixedWidth(74); tl.setMinimumWidth(74)
+            tl.setFixedWidth(_time_col_w)
 
             # עמודת תוכן — מרכז, RTL
             col = QVBoxLayout(); col.setSpacing(2)
@@ -1217,13 +1222,9 @@ class FloatingWidget(QWidget):
         self._bg.clicked.connect(self.sig_google); self._bh.clicked.connect(self.sig_history)
         self._bmute.clicked.connect(self._open_snooze_menu)
         self._bx.clicked.connect(self._toggle_min)
-        self._lt=QLabel("🔴  התרעות")
-        self._lt.setFont(QFont("Arial",10,QFont.Bold)); self._lt.setStyleSheet("color:white;")
-        self._lt.setLayoutDirection(Qt.RightToLeft)
-        # אין setMinimumWidth — מניח לתווית להצטמצם לפי רוחב הווידג'ט
         hl.addWidget(self._bc); hl.addWidget(self._bm); hl.addWidget(self._bg)
-        hl.addWidget(self._bh); hl.addWidget(self._bmute); hl.addWidget(self._bx)
-        hl.addStretch(1); hl.addWidget(self._lt, 0, Qt.AlignVCenter | Qt.AlignRight)
+        hl.addWidget(self._bh); hl.addWidget(self._bmute); hl.addStretch(1)
+        hl.addWidget(self._bx)
         self._idle=QLabel("אין התרעות פעילות"); self._idle.setAlignment(Qt.AlignCenter)
         self._idle.setFont(QFont("Arial",10))
         self._idle.setStyleSheet("color:rgba(255,255,255,0.45);padding:12px 0;")
