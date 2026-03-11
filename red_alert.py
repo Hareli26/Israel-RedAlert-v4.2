@@ -1136,16 +1136,22 @@ class HistoryWindow(QWidget):
             color    = cat_info["color"]
 
             row = QFrame()
+            # border-right כי ב-RTL האייקון נמצא בצד ימין הפיזי
             row.setStyleSheet(
-                f"QFrame{{background:rgba(25,4,4,.85);border-left:3px solid {color};"
-                f"border-radius:6px;padding:1px;}}"
+                f"QFrame{{background:rgba(25,4,4,.85);border-right:3px solid {color};"
+                f"border-radius:6px;}}"
                 f"QFrame:hover{{background:rgba(45,8,8,.95);}}")
-            rl = QHBoxLayout(row); rl.setContentsMargins(10, 7, 10, 7); rl.setSpacing(10)
+            # הגדר LTR כדי שהפריסה תהיה: [זמן | טקסט | אייקון] משמאל לימין
+            row.setLayoutDirection(Qt.LeftToRight)
+            rl = QHBoxLayout(row); rl.setContentsMargins(10, 8, 12, 8); rl.setSpacing(10)
 
-            ico = QLabel(cat_info["icon"])
-            ico.setFont(QFont("Segoe UI Emoji", 15))
-            ico.setFixedWidth(28); ico.setAlignment(Qt.AlignCenter)
+            # עמודת זמן — שמאל, רוחב קבוע מספיק ל-"23:59:59"
+            tl = QLabel(time_label); tl.setFont(QFont("Consolas", 8))
+            tl.setStyleSheet("color:rgba(255,220,100,.65);")
+            tl.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+            tl.setFixedWidth(58); tl.setMinimumWidth(58)
 
+            # עמודת תוכן — מרכז, RTL
             col = QVBoxLayout(); col.setSpacing(2)
             ttl = QLabel(rec["title"])
             ttl.setFont(QFont("Arial", 9, QFont.Bold))
@@ -1157,11 +1163,14 @@ class HistoryWindow(QWidget):
             cl.setLayoutDirection(Qt.RightToLeft); cl.setWordWrap(True)
             col.addWidget(ttl); col.addWidget(cl)
 
-            tl = QLabel(time_label); tl.setFont(QFont("Arial", 8))
-            tl.setStyleSheet("color:rgba(255,220,100,.55);")
-            tl.setAlignment(Qt.AlignTop | Qt.AlignLeft); tl.setFixedWidth(58)
+            # אייקון — ימין
+            ico = QLabel(cat_info["icon"])
+            ico.setFont(QFont("Segoe UI Emoji", 14))
+            ico.setFixedWidth(28); ico.setAlignment(Qt.AlignCenter)
 
-            rl.addWidget(ico); rl.addLayout(col, 1); rl.addWidget(tl, 0, Qt.AlignTop)
+            rl.addWidget(tl, 0, Qt.AlignTop)
+            rl.addLayout(col, 1)
+            rl.addWidget(ico, 0, Qt.AlignVCenter)
             self._list.addWidget(row)
 
     def showEvent(self, e):
@@ -1177,7 +1186,7 @@ class FloatingWidget(QWidget):
     sig_fullscreen=pyqtSignal(); sig_settings=pyqtSignal(); sig_map=pyqtSignal()
     sig_google=pyqtSignal(); sig_history=pyqtSignal()   # ← history window
     sig_snooze=pyqtSignal(int)   # minutes (0=cancel)
-    MIN_W,MIN_H=262,130
+    MIN_W,MIN_H=290,145
     def __init__(self,config):
         super().__init__(); self.config=config
         self._alerts=deque(maxlen=60); self._active=None
@@ -1188,19 +1197,19 @@ class FloatingWidget(QWidget):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setMinimumSize(self.MIN_W,self.MIN_H)
         # תמיד מינימום MIN_H — גם אם config שמר ערך קטן יותר
-        saved_h = config.get("widget_h", 155)
-        w=max(self.MIN_W,config.get("widget_w",262)); h=max(self.MIN_H, saved_h)
+        saved_h = config.get("widget_h", 160)
+        w=max(self.MIN_W,config.get("widget_w",290)); h=max(self.MIN_H, saved_h)
         self.resize(w,h); self._build(); self._position()
         self._timer=QTimer(self); self._timer.timeout.connect(self._tick); self._timer.start(450)
     def _build(self):
-        root=QVBoxLayout(self); root.setContentsMargins(8,8,8,6); root.setSpacing(4)
-        hdr=QWidget(); hdr.setFixedHeight(30)
-        hl=QHBoxLayout(hdr); hl.setContentsMargins(4,0,4,0); hl.setSpacing(4)
+        root=QVBoxLayout(self); root.setContentsMargins(10,10,10,8); root.setSpacing(5)
+        hdr=QWidget(); hdr.setFixedHeight(32)
+        hl=QHBoxLayout(hdr); hl.setContentsMargins(4,0,4,0); hl.setSpacing(5)
         def sb(t,tip):
-            b=QPushButton(t); b.setFixedSize(24,24); b.setToolTip(tip)
-            b.setStyleSheet("QPushButton{background:rgba(255,255,255,0.14);color:white;border:none;"
-                            "border-radius:12px;font-size:12px;}"
-                            "QPushButton:hover{background:rgba(255,255,255,0.30);}"); return b
+            b=QPushButton(t); b.setFixedSize(26,26); b.setToolTip(tip)
+            b.setStyleSheet("QPushButton{background:rgba(255,255,255,0.15);color:white;border:none;"
+                            "border-radius:13px;font-size:13px;}"
+                            "QPushButton:hover{background:rgba(255,255,255,0.32);}"); return b
         self._bc=sb("⚙","הגדרות"); self._bm=sb("🗺","מפה")
         self._bg=sb("🌍","שיתוף מיקום Google"); self._bh=sb("📋","היסטוריה")
         self._bmute=sb("🔔","השתק התרעות"); self._bx=sb("−","מזעור")
@@ -1209,15 +1218,15 @@ class FloatingWidget(QWidget):
         self._bmute.clicked.connect(self._open_snooze_menu)
         self._bx.clicked.connect(self._toggle_min)
         self._lt=QLabel("🔴  התרעות")
-        self._lt.setFont(QFont("Arial",9,QFont.Bold)); self._lt.setStyleSheet("color:white;")
+        self._lt.setFont(QFont("Arial",10,QFont.Bold)); self._lt.setStyleSheet("color:white;")
         self._lt.setLayoutDirection(Qt.RightToLeft)
-        self._lt.setMinimumWidth(90)
+        self._lt.setMinimumWidth(95)
         hl.addWidget(self._bc); hl.addWidget(self._bm); hl.addWidget(self._bg)
         hl.addWidget(self._bh); hl.addWidget(self._bmute); hl.addWidget(self._bx)
         hl.addStretch(); hl.addWidget(self._lt)
         self._idle=QLabel("אין התרעות פעילות"); self._idle.setAlignment(Qt.AlignCenter)
-        self._idle.setFont(QFont("Arial",9))
-        self._idle.setStyleSheet("color:rgba(255,255,255,0.42);padding:10px 0;")
+        self._idle.setFont(QFont("Arial",10))
+        self._idle.setStyleSheet("color:rgba(255,255,255,0.45);padding:12px 0;")
         self._idle.setLayoutDirection(Qt.RightToLeft)
         self._scroll=QScrollArea(); self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1288,6 +1297,9 @@ class FloatingWidget(QWidget):
         if not self._alerts: self._idle.show(); self._scroll.hide()
         else: self._idle.hide(); self._scroll.show()
     def add_alert(self,a):
+        # מנע כפילויות — אותו ID לא יתווסף פעמיים
+        if any(a2.id == a.id for a2 in self._alerts):
+            return
         self._active=a; self._alerts.appendleft(a); self._rebuild(); self._refresh_content()
     def clear_alerts(self): self._active=None; self._rebuild()
     def _rebuild(self):
@@ -1297,25 +1309,25 @@ class FloatingWidget(QWidget):
         for a in list(self._alerts)[:12]: self._il.addWidget(self._make_row(a))
     def _make_row(self,a):
         act=(self._active and self._active.id==a.id)
-        f=QFrame(); f.setMinimumHeight(60); f.setCursor(Qt.PointingHandCursor)
+        f=QFrame(); f.setMinimumHeight(64); f.setCursor(Qt.PointingHandCursor)
         bg=(f"qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 {a.color},stop:1 rgba(60,0,0,0.92))"
             if act else "rgba(48,4,4,0.88)")
         brd="rgba(255,255,255,0.38)" if act else "rgba(255,255,255,0.09)"
         f.setStyleSheet(f"QFrame{{background:{bg};border-radius:8px;border:1px solid {brd};}}")
-        lay=QHBoxLayout(f); lay.setContentsMargins(8,6,8,6); lay.setSpacing(8)
-        li=QLabel(a.icon); li.setFont(QFont("Segoe UI Emoji",18)); li.setFixedWidth(30); li.setAlignment(Qt.AlignCenter)
-        col=QVBoxLayout(); col.setSpacing(2)
-        t1=QLabel(a.title); t1.setFont(QFont("Arial",8,QFont.Bold)); t1.setStyleSheet("color:white;"); t1.setLayoutDirection(Qt.RightToLeft)
+        lay=QHBoxLayout(f); lay.setContentsMargins(8,7,8,7); lay.setSpacing(8)
+        li=QLabel(a.icon); li.setFont(QFont("Segoe UI Emoji",20)); li.setFixedWidth(32); li.setAlignment(Qt.AlignCenter)
+        col=QVBoxLayout(); col.setSpacing(3)
+        t1=QLabel(a.title); t1.setFont(QFont("Arial",10,QFont.Bold)); t1.setStyleSheet("color:white;"); t1.setLayoutDirection(Qt.RightToLeft)
         cs="  |  ".join(a.cities[:3])+(f"  +{len(a.cities)-3}" if len(a.cities)>3 else "")
-        t2=QLabel(cs); t2.setFont(QFont("Arial",7)); t2.setStyleSheet("color:rgba(255,255,255,0.80);"); t2.setLayoutDirection(Qt.RightToLeft); t2.setWordWrap(True)
+        t2=QLabel(cs); t2.setFont(QFont("Arial",9)); t2.setStyleSheet("color:rgba(255,255,255,0.80);"); t2.setLayoutDirection(Qt.RightToLeft); t2.setWordWrap(True)
         col.addWidget(t1); col.addWidget(t2)
         if act and a.origin:
             flag,short,full,ocol=a.origin
-            t3=QLabel(f"{flag} {short}"); t3.setFont(QFont("Segoe UI Emoji",7))
+            t3=QLabel(f"{flag} {short}"); t3.setFont(QFont("Segoe UI Emoji",8))
             t3.setStyleSheet(f"color:{ocol};background:rgba(0,0,0,0.3);border-radius:3px;padding:1px 4px;")
             t3.setLayoutDirection(Qt.RightToLeft); col.addWidget(t3)
         col.addStretch()
-        tt=QLabel(a.time_str); tt.setFont(QFont("Arial",6)); tt.setStyleSheet("color:rgba(255,255,255,0.42);"); tt.setAlignment(Qt.AlignTop|Qt.AlignLeft)
+        tt=QLabel(a.time_str); tt.setFont(QFont("Arial",8)); tt.setStyleSheet("color:rgba(255,255,255,0.45);"); tt.setAlignment(Qt.AlignTop|Qt.AlignLeft)
         lay.addWidget(li); lay.addLayout(col,1); lay.addWidget(tt,0,Qt.AlignTop)
         f.mouseDoubleClickEvent=lambda e: self.sig_fullscreen.emit()
         return f
@@ -1324,20 +1336,40 @@ class FloatingWidget(QWidget):
     def _tick(self): self._pulse=not self._pulse; self._step=(self._step+1)%360; self.update()
     def paintEvent(self,e):
         p=QPainter(self); p.setRenderHint(QPainter.Antialiasing)
-        r=self.rect().adjusted(2,2,-2,-2); path=QPainterPath(); path.addRoundedRect(QRectF(r),13,13)
+        r=self.rect().adjusted(2,2,-2,-2)
+        path=QPainterPath(); path.addRoundedRect(QRectF(r),16,16)
+
         if self._active and self._pulse:
-            c=QColor(self._active.color); c.setAlpha(215)
-            g=QLinearGradient(0,0,0,r.height()); g.setColorAt(0,c)
-            dk=QColor(self._active.dark); dk.setAlpha(225); g.setColorAt(1,dk)
-            p.fillPath(path,g); p.setPen(QPen(QColor(self._active.color),2))
+            # ── פעיל / פולס — גלאס אדום עם זוהר ──────────────────
+            c=QColor(self._active.color); c.setAlpha(145)
+            dk=QColor(self._active.dark);  dk.setAlpha(190)
+            g=QLinearGradient(0,0,0,r.height()); g.setColorAt(0,c); g.setColorAt(1,dk)
+            p.fillPath(path,g)
+            # shimmer — פס אור עדין בחלק עליון (אפקט זכוכית)
+            sh=QLinearGradient(0,0,0,r.height()*0.28)
+            sh.setColorAt(0,QColor(255,255,255,52)); sh.setColorAt(1,QColor(255,255,255,0))
+            p.fillPath(path,sh)
+            # border זוהר בצבע ההתרעה
+            p.setPen(QPen(QColor(self._active.color),2.0))
         elif self._active:
-            c2=QColor(self._active.color); c2.setAlpha(100)
-            g2=QLinearGradient(0,0,0,r.height()); g2.setColorAt(0,c2)
-            dk2=QColor(self._active.dark); dk2.setAlpha(220); g2.setColorAt(1,dk2)
-            p.fillPath(path,g2); p.setPen(QPen(QColor(255,255,255,35),1))
+            # ── פעיל / שקט — גלאס עמום יותר ────────────────────
+            c2=QColor(self._active.color); c2.setAlpha(75)
+            dk2=QColor(self._active.dark); dk2.setAlpha(175)
+            g2=QLinearGradient(0,0,0,r.height()); g2.setColorAt(0,c2); g2.setColorAt(1,dk2)
+            p.fillPath(path,g2)
+            sh2=QLinearGradient(0,0,0,r.height()*0.22)
+            sh2.setColorAt(0,QColor(255,255,255,38)); sh2.setColorAt(1,QColor(255,255,255,0))
+            p.fillPath(path,sh2)
+            p.setPen(QPen(QColor(self._active.color),1.2))
         else:
-            g3=QLinearGradient(0,0,0,r.height()); g3.setColorAt(0,QColor(26,4,4,215)); g3.setColorAt(1,QColor(12,2,2,215))
-            p.fillPath(path,g3); p.setPen(QPen(QColor(255,255,255,25),1))
+            # ── סרק — גלאס כהה שקוף ────────────────────────────
+            g3=QLinearGradient(0,0,0,r.height())
+            g3.setColorAt(0,QColor(22,6,6,168)); g3.setColorAt(1,QColor(10,2,2,152))
+            p.fillPath(path,g3)
+            sh3=QLinearGradient(0,0,0,r.height()*0.18)
+            sh3.setColorAt(0,QColor(255,255,255,30)); sh3.setColorAt(1,QColor(255,255,255,0))
+            p.fillPath(path,sh3)
+            p.setPen(QPen(QColor(255,255,255,38),1.0))
         p.drawPath(path)
     def mousePressEvent(self,e):
         if e.button()==Qt.LeftButton: self._drag_pos=e.globalPos()-self.frameGeometry().topLeft()
@@ -1353,6 +1385,7 @@ class FloatingWidget(QWidget):
 # ════════════════════════════════════════════════════════════════
 class FullScreen(QWidget):
     sig_shelter_confirmed = pyqtSignal()   # נפלט כשמשתמש לוחץ "אני במרחב המוגן"
+    sig_dismissed         = pyqtSignal()   # נפלט כשהמשתמש סוגר ידנית (✕)
 
     def __init__(self,history,active=None,timeout=0,screen=None):
         super().__init__()
@@ -1404,7 +1437,7 @@ class FullScreen(QWidget):
             cb=QPushButton("✕"); cb.setFixedSize(40,40)
             cb.setStyleSheet("QPushButton{background:rgba(0,0,0,.3);color:white;border:none;"
                              "border-radius:20px;font-size:16px;}QPushButton:hover{background:rgba(0,0,0,.6);}")
-            cb.clicked.connect(self.close)
+            cb.clicked.connect(self._dismiss)
             bl.addWidget(self._ico); bl.addLayout(tc,1); bl.addWidget(cb,0,Qt.AlignTop)
             root.addWidget(ban)
             # ── רצועת מרחב מוגן ───────────────────────────────────────
@@ -1515,6 +1548,64 @@ class FullScreen(QWidget):
         self.close()
     def _fmt_auto(self):
         return f"נסגר אוטומטית בעוד  {self._auto_left}  שניות  |  ESC לסגירה"
+    def go_green(self):
+        """מעבר לצבע ירוק — האירוע הסתיים. מציג 'מותר לצאת' ונסגר לאחר 8 שניות."""
+        try:
+            if hasattr(self, '_tmr'):   self._tmr.stop()
+            if hasattr(self, '_atimer'): self._atimer.stop()
+            # הסתר את כל תוכן הווידג'ט הנוכחי
+            for i in range(self.layout().count()):
+                item = self.layout().itemAt(i)
+                if item and item.widget():
+                    item.widget().hide()
+            # שכבה ירוקה מעל
+            ov = QWidget(self); ov.setGeometry(self.rect())
+            ov.setStyleSheet(
+                "QWidget{background:qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+                "stop:0 #002e18,stop:1 #001509);}")
+            ol = QVBoxLayout(ov); ol.setAlignment(Qt.AlignCenter); ol.setSpacing(24)
+            ol.setContentsMargins(60,60,60,60)
+
+            ico = QLabel("✅"); ico.setFont(QFont("Arial", 90))
+            ico.setAlignment(Qt.AlignCenter)
+            t1 = QLabel("מותר לצאת מהמרחב המוגן")
+            t1.setFont(QFont("Arial", 42, QFont.Bold))
+            t1.setStyleSheet("color:#00FF88;"); t1.setAlignment(Qt.AlignCenter)
+            t1.setLayoutDirection(Qt.RightToLeft)
+            t2 = QLabel("פיקוד העורף אישר יציאה — בטוח לצאת")
+            t2.setFont(QFont("Arial", 22)); t2.setStyleSheet("color:#AAFFCC;")
+            t2.setAlignment(Qt.AlignCenter); t2.setLayoutDirection(Qt.RightToLeft)
+            self._gc_lbl = QLabel("נסגר אוטומטית בעוד 8 שניות")
+            self._gc_lbl.setFont(QFont("Arial", 13))
+            self._gc_lbl.setStyleSheet("color:rgba(160,255,195,.50);")
+            self._gc_lbl.setAlignment(Qt.AlignCenter)
+            self._gc_lbl.setLayoutDirection(Qt.RightToLeft)
+
+            ol.addWidget(ico); ol.addWidget(t1); ol.addWidget(t2); ol.addWidget(self._gc_lbl)
+            ov.show(); self._green_overlay = ov
+
+            self._gc_secs = 8
+            self._gc_timer = QTimer(self)
+            self._gc_timer.timeout.connect(self._gc_tick)
+            self._gc_timer.start(1000)
+        except Exception:
+            self.close()
+
+    def _gc_tick(self):
+        self._gc_secs -= 1
+        try:
+            self._gc_lbl.setText(f"נסגר אוטומטית בעוד  {self._gc_secs}  שניות")
+        except RuntimeError:
+            pass
+        if self._gc_secs <= 0:
+            self._gc_timer.stop()
+            self.close()
+
+    def _dismiss(self):
+        """סגירה ידנית — מעדכן RedAlertApp לא להציג שוב לאותה התרעה."""
+        self.sig_dismissed.emit()
+        self.close()
+
     def _auto_tick(self):
         self._auto_left -= 1
         try: self._clbl.setText(self._fmt_auto())
@@ -2831,6 +2922,7 @@ class AlertOverlay(QWidget):
     הבר מצויר ב-paintEvent — בטוח לחלוטין, ללא ווידג'טים מקוננים.
     """
     sig_open_fullscreen = pyqtSignal()
+    sig_dismissed       = pyqtSignal()   # נפלט כשהמשתמש סוגר את החלון ידנית
 
     def __init__(self, alert, my_cities=None, timeout=30, parent=None):
         super().__init__(parent)
@@ -2872,7 +2964,7 @@ class AlertOverlay(QWidget):
         xbtn.setStyleSheet(
             "QPushButton{background:rgba(255,80,80,.25);color:white;border:none;border-radius:12px;}"
             "QPushButton:hover{background:#AA2020;}")
-        xbtn.clicked.connect(self.close)
+        xbtn.clicked.connect(self._dismiss)
         hdr.addWidget(ico); hdr.addWidget(ttl, 1); hdr.addWidget(tim); hdr.addWidget(xbtn)
         root.addLayout(hdr)
 
@@ -2978,8 +3070,15 @@ class AlertOverlay(QWidget):
             self._timer.stop()
             self.close()
 
+    def _dismiss(self):
+        """סגירה ידנית על ידי המשתמש — מעדכן את האפליקציה לא להציג שוב."""
+        self.sig_dismissed.emit()
+        self._timer.stop()
+        self.close()
+
     def _open_fs(self):
         self.sig_open_fullscreen.emit()
+        self._timer.stop()
         self.close()
 
     # ── ציור: רקע מעוגל + בר התקדמות ─────────────────────────
@@ -2988,12 +3087,22 @@ class AlertOverlay(QWidget):
             p = QPainter(self)
             p.setRenderHint(QPainter.Antialiasing)
 
-            # רקע מעוגל
+            # ── רקע גלאס מעוגל ─────────────────────────────────
             r = self.rect().adjusted(2, 2, -2, -2)
             path = QPainterPath()
-            path.addRoundedRect(QRectF(r), 14, 14)
-            p.fillPath(path, QColor(15, 1, 1, 235))
-            border = QColor(self._alert.color); border.setAlpha(160)
+            path.addRoundedRect(QRectF(r), 16, 16)
+            # שכבת בסיס כהה שקופה
+            bg = QLinearGradient(0, 0, 0, r.height())
+            bg.setColorAt(0, QColor(18, 2, 2, 225))
+            bg.setColorAt(1, QColor(8,  1, 1, 215))
+            p.fillPath(path, bg)
+            # shimmer עליון — אפקט זכוכית
+            sh = QLinearGradient(0, 0, 0, r.height() * 0.22)
+            sh.setColorAt(0, QColor(255, 255, 255, 45))
+            sh.setColorAt(1, QColor(255, 255, 255, 0))
+            p.fillPath(path, sh)
+            # border בצבע ההתרעה
+            border = QColor(self._alert.color); border.setAlpha(180)
             p.setPen(QPen(border, 2)); p.drawPath(path)
 
             # בר התקדמות — מצויר ישירות על ה-placeholder
@@ -3039,11 +3148,15 @@ class FallResultsWorker(QThread):
     """מחכה delay_secs לאחר ההתרעה, ואז מאחזר כותרות חדשות ממקורות RSS."""
     results_ready = pyqtSignal(list)   # list of {"title","desc","link","ts"}
 
-    _KEYWORDS = ["נפילה","נפל","מכה","פגיעה","ירי","פגע","התפוצץ","נחת",
-                 "ירוט","כיפת ברזל","חיסול","תקיפה"]
+    # מילות מפתח לתוצאות ירי/ירוט/נפילה — חייב להופיע יחד עם שם ישוב
+    _KEYWORDS = ["נפילה","נפל","מכה","פגיעה","פגע","התפוצץ","נחת",
+                 "ירוט","כיפת ברזל","חיסול","התרסק","שיגור","רקטה","טיל",
+                 "כטב\"מ","מל\"ט","מחבל","פצצה","תקיפה","הפצצה"]
+    # מקורות RSS ביטחוניים בלבד
     _RSS_FEEDS = [
-        "https://www.ynet.co.il/Integration/StoryRss2.xml",
+        "https://www.ynet.co.il/Integration/StoryRss3.xml",   # ynet ביטחון
         "https://rss.walla.co.il/feed/22",                    # walla ביטחון
+        "https://www.mako.co.il/AjaxPage?jspName=rssFeedGet.jsp&catId=1",  # mako חדשות
     ]
 
     def __init__(self, cities, alert_ts, delay_secs=120):
@@ -3059,16 +3172,23 @@ class FallResultsWorker(QThread):
         for url in self._RSS_FEEDS:
             try: items.extend(self._fetch_rss(url))
             except Exception: pass
-        # deduplicate
+        # deduplicate by title prefix
         seen, filtered = set(), []
         for item in items:
             key = item.get("title","")[:50]
             if key in seen: continue
             seen.add(key)
-            text = (item.get("title","") + " " + item.get("desc","")).lower()
+            # סינון לפי זמן — רק ידיעות שפורסמו אחרי ההתרעה (או עד 10 דקות לפניה)
+            pub_dt = item.get("_pub_dt")
+            if pub_dt is not None:
+                delta = (pub_dt - self.alert_ts).total_seconds()
+                if delta < -600:   # פורסם יותר מ-10 דקות לפני ההתרעה — דלג
+                    continue
+            text = (item.get("title","") + " " + item.get("desc",""))
             city_hit = any(c in text for c in self.cities)
             kw_hit   = any(kw in text for kw in self._KEYWORDS)
-            if city_hit or kw_hit:
+            # דרוש גם שם ישוב וגם מילת מפתח — מניעת ידיעות לא קשורות
+            if city_hit and kw_hit:
                 filtered.append(item)
         self.results_ready.emit(filtered[:10])
 
@@ -3076,6 +3196,8 @@ class FallResultsWorker(QThread):
     def _fetch_rss(url):
         import urllib.request
         import xml.etree.ElementTree as ET
+        import re
+        from email.utils import parsedate_to_datetime
         req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=8) as r:
             data = r.read()
@@ -3084,13 +3206,18 @@ class FallResultsWorker(QThread):
         for item in root.iter("item"):
             title = (item.findtext("title") or "").strip()
             raw_desc = (item.findtext("description") or "").strip()
-            # strip HTML tags from description
-            import re
             desc = re.sub(r"<[^>]+>","", raw_desc)[:200].strip()
             link  = (item.findtext("link") or "").strip()
             pub   = (item.findtext("pubDate") or "").strip()
+            # פרסינג של זמן הפרסום
+            pub_dt = None
+            if pub:
+                try:
+                    pub_dt = parsedate_to_datetime(pub).replace(tzinfo=None)
+                except Exception:
+                    pass
             if title:
-                out.append({"title":title,"desc":desc,"link":link,"ts":pub})
+                out.append({"title":title,"desc":desc,"link":link,"ts":pub,"_pub_dt":pub_dt})
         return out
 
 
@@ -3194,6 +3321,7 @@ class RedAlertApp(QApplication):
         self._temp_locations=set()        # ישובים זמניים (לפי מיקום IP)
         self._mute_until    =0.0          # epoch — alerts muted until this time
         self._fall_workers  =[]           # FallResultsWorker instances (keep refs)
+        self._ack_key       =None         # (cat, frozenset(cities)) — dismissed by user
         self.widget=FloatingWidget(self.config)
         self.widget.sig_fullscreen.connect(self._fullscreen)
         self.widget.sig_settings.connect(self._settings)
@@ -3357,8 +3485,10 @@ class RedAlertApp(QApplication):
         try:
             _log_step("start")
             a = Alert(data)
-            self.history.appendleft(a)
-            self._history_db.save(a)
+            # מנע כפילויות בהיסטוריה לפי ID
+            if not any(h.id == a.id for h in self.history):
+                self.history.appendleft(a)
+                self._history_db.save(a)
             self.widget.add_alert(a)
             _log_step("widget updated")
             # ── Telegram / Webhook (fire unconditionally, mute only affects UI) ──
@@ -3377,6 +3507,11 @@ class RedAlertApp(QApplication):
             if time.time() < self._mute_until:
                 _log_step("muted — skipping UI")
                 return
+            # ── Dismiss / ack check — user closed this exact alert before ─────
+            _akey = (a.cat, frozenset(a.cities))
+            if _akey == self._ack_key:
+                _log_step("ack — already dismissed, skipping UI")
+                return
             alerted = set(a.cities)
             my_locs = self.config.get("locations", [])
             my_hit  = bool(my_locs and alerted.intersection(my_locs))
@@ -3391,6 +3526,8 @@ class RedAlertApp(QApplication):
                 self._close_overlay()
                 self._overlay = AlertOverlay(a, my_cities=my_locs, timeout=ov_secs)
                 self._overlay.sig_open_fullscreen.connect(self._fullscreen)
+                self._overlay.sig_dismissed.connect(
+                    lambda _k=(a.cat, frozenset(a.cities)): self._on_alert_dismissed(_k))
                 self._overlay.show()
             _log_step("overlay shown")
             # ── מסך מלא ────────────────────────────────────────────
@@ -3442,8 +3579,25 @@ class RedAlertApp(QApplication):
             except RuntimeError: pass
             self._overlay = None
 
+    def _on_alert_dismissed(self, key):
+        """מופעל כשהמשתמש סוגר FullScreen/Overlay — מונע הצגה חוזרת לאותה התרעה."""
+        self._ack_key = key
+        # סגור גם את ה-overlay אם פתוח
+        self._close_overlay()
+
     def _on_clear(self):
+        # איפוס ה-ack כשהתרעה נפסקת
+        self._ack_key = None
         try:
+            # אם המסך המלא פתוח — מעבר לצבע ירוק
+            if self._fs is not None:
+                fs_list = self._fs if isinstance(self._fs, list) else [self._fs]
+                for fs in fs_list:
+                    try:
+                        if fs.isVisible(): fs.go_green()
+                    except RuntimeError:
+                        pass
+                # לא מאפסים _fs — הם ייסגרו לאחר 8 שניות לבד
             self._close_overlay()
             self.widget.clear_alerts()
             uc=self.config.get("locations",[])
@@ -3479,10 +3633,14 @@ class RedAlertApp(QApplication):
         active   = self.history[0] if self.history else None
         screens  = QApplication.screens()
         instances = []
+        ack_key = (active.cat, frozenset(active.cities)) if active else None
         for screen in screens:
             fs = FullScreen(self.history, active, timeout=timeout, screen=screen)
             fs.sig_shelter_confirmed.connect(self._on_shelter_button)
             fs.destroyed.connect(self._on_fs_destroyed)
+            if ack_key:
+                fs.sig_dismissed.connect(
+                    lambda _k=ack_key: self._on_alert_dismissed(_k))
             fs.show()
             instances.append(fs)
         self._fs = instances if len(instances) > 1 else (instances[0] if instances else None)
@@ -3544,11 +3702,11 @@ class RedAlertApp(QApplication):
         if minutes == 0:
             self._mute_until = 0.0
             self.widget.update_mute_icon(False)
-            self._tray_icon.setToolTip(f"{APP_NAME} — פעיל")
+            self._tray.setToolTip(f"{APP_NAME} — פעיל")
         else:
             self._mute_until = time.time() + minutes * 60
             self.widget.update_mute_icon(True)
-            self._tray_icon.setToolTip(f"{APP_NAME} — מושתק {minutes} ד׳")
+            self._tray.setToolTip(f"{APP_NAME} — מושתק {minutes} ד׳")
 
     def _settings(self):
         d=SettingsDialog(self.config,self.widget)
