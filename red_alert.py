@@ -1145,11 +1145,11 @@ class HistoryWindow(QWidget):
             row.setLayoutDirection(Qt.LeftToRight)
             rl = QHBoxLayout(row); rl.setContentsMargins(10, 8, 12, 8); rl.setSpacing(10)
 
-            # עמודת זמן — שמאל, רוחב קבוע מספיק ל-"23:59:59"
-            tl = QLabel(time_label); tl.setFont(QFont("Consolas", 8))
+            # עמודת זמן — שמאל, רוחב קבוע מספיק ל-"23:59:59" כולל DPI גבוה
+            tl = QLabel(time_label); tl.setFont(QFont("Consolas", 9))
             tl.setStyleSheet("color:rgba(255,220,100,.65);")
             tl.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-            tl.setFixedWidth(58); tl.setMinimumWidth(58)
+            tl.setFixedWidth(74); tl.setMinimumWidth(74)
 
             # עמודת תוכן — מרכז, RTL
             col = QVBoxLayout(); col.setSpacing(2)
@@ -1220,10 +1220,10 @@ class FloatingWidget(QWidget):
         self._lt=QLabel("🔴  התרעות")
         self._lt.setFont(QFont("Arial",10,QFont.Bold)); self._lt.setStyleSheet("color:white;")
         self._lt.setLayoutDirection(Qt.RightToLeft)
-        self._lt.setMinimumWidth(95)
+        # אין setMinimumWidth — מניח לתווית להצטמצם לפי רוחב הווידג'ט
         hl.addWidget(self._bc); hl.addWidget(self._bm); hl.addWidget(self._bg)
         hl.addWidget(self._bh); hl.addWidget(self._bmute); hl.addWidget(self._bx)
-        hl.addStretch(); hl.addWidget(self._lt)
+        hl.addStretch(1); hl.addWidget(self._lt, 0, Qt.AlignVCenter | Qt.AlignRight)
         self._idle=QLabel("אין התרעות פעילות"); self._idle.setAlignment(Qt.AlignCenter)
         self._idle.setFont(QFont("Arial",10))
         self._idle.setStyleSheet("color:rgba(255,255,255,0.45);padding:12px 0;")
@@ -1300,6 +1300,9 @@ class FloatingWidget(QWidget):
         # מנע כפילויות — אותו ID לא יתווסף פעמיים
         if any(a2.id == a.id for a2 in self._alerts):
             return
+        # פתח ממוזעור אוטומטית כשמגיעה התרעה — כדי שהישוב וההתרעה יהיו גלויים
+        if self._minimized:
+            self._toggle_min()
         self._active=a; self._alerts.appendleft(a); self._rebuild(); self._refresh_content()
     def clear_alerts(self): self._active=None; self._rebuild()
     def _rebuild(self):
